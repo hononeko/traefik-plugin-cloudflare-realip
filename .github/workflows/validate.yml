@@ -1,0 +1,95 @@
+name: Validate
+
+on:
+  workflow_call:
+
+env:
+  # Keep in step with the yaegi version in Traefik's go.mod.
+  # renovate: datasource=go depName=github.com/traefik/yaegi
+  YAEGI_VERSION: v0.16.1
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: "go.mod"
+          cache: false
+
+      - name: Verify go.mod is tidy
+        run: go mod tidy -diff
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+
+      - name: Run Unit Tests with Coverage
+        run: |
+          go test -v -race -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out
+
+      - name: Generate Job Summary
+        run: |
+          {
+            echo "### Unit Test Coverage"
+            echo '```text'
+            go tool cover -func=coverage.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Traefik interprets plugins with yaegi rather than compiling them, so the tests also run under the interpreter.
+  # yaegi resolves imports through GOPATH, hence the GOPATH layout and GO111MODULE=off.
+  yaegi:
+    name: Yaegi
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    env:
+      GO111MODULE: "off"
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: go/src/github.com/${{ github.repository }}
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go/src/github.com/${{ github.repository }}/go.mod
+          cache: false
+
+      - name: Install yaegi
+        run: GO111MODULE=on go install "github.com/traefik/yaegi/cmd/yaegi@$YAEGI_VERSION"
+
+      - name: Run tests under yaegi
+        run: GOPATH="$GITHUB_WORKSPACE/go" "$(go env GOPATH)/bin/yaegi" test -v .
+
+  e2e:
+    name: Traefik E2E (fastProxy ${{ matrix.fast-proxy }})
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        fast-proxy: [false, true]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Run end-to-end test
+        env:
+          FAST_PROXY: ${{ matrix.fast-proxy }}
+        run: ./test/e2e/run.sh

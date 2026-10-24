@@ -1,0 +1,22 @@
+http:
+  middlewares:
+    realip:
+      plugin:
+        realip:
+          trustedCIDRs:
+            - 172.16.0.0/12
+    realip-untrusted:
+      plugin:
+        realip:
+          trustedCIDRs:
+            - 192.0.2.0/24
+  routers:
+    all:
+      entryPoints: [dmz, untrusted, plain]
+      rule: PathPrefix(`/`)
+      service: whoami
+  services:
+    whoami:
+      loadBalancer:
+        servers:
+          - url: http://whoami:80

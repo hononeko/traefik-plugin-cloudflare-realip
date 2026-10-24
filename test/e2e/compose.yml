@@ -1,0 +1,31 @@
+# Traefik with the plugin loaded from this checkout, in front of a whoami backend that echoes request headers.
+# FAST_PROXY=true switches to Traefik's fast proxy, which builds forwarded headers separately.
+# Every entrypoint trusts the Docker network for forwarded headers, like a Traefik behind Cloudflare:
+#   dmz       plugin trusting the Docker network (requests arrive as if from Cloudflare)
+#   untrusted plugin trusting only TEST-NET-1 (requests arrive from a peer the entrypoint trusts but the plugin doesn't)
+#   plain     no plugin
+services:
+  traefik:
+    image: traefik:v3.7.16
+    command:
+      - --entryPoints.dmz.address=:8443
+      - --entryPoints.dmz.forwardedHeaders.trustedIPs=172.16.0.0/12
+      - --entryPoints.dmz.http.middlewares=realip@file
+      - --entryPoints.untrusted.address=:8001
+      - --entryPoints.untrusted.forwardedHeaders.trustedIPs=172.16.0.0/12
+      - --entryPoints.untrusted.http.middlewares=realip-untrusted@file
+      - --entryPoints.plain.address=:8000
+      - --entryPoints.plain.forwardedHeaders.trustedIPs=172.16.0.0/12
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --log.level=INFO
+      - --experimental.fastProxy=${FAST_PROXY:-false}
+      - --experimental.localPlugins.realip.moduleName=github.com/hononeko/traefik-plugin-cloudflare-realip
+    ports:
+      - "127.0.0.1:18443:8443"
+      - "127.0.0.1:18001:8001"
+      - "127.0.0.1:18000:8000"
+    volumes:
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ../..:/plugins-local/src/github.com/hononeko/traefik-plugin-cloudflare-realip:ro
+  whoami:
+    image: traefik/whoami:v1.11.0
