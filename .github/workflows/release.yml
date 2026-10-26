@@ -42,7 +42,7 @@ jobs:
       # Go modules need v-prefixed tags.
       - name: Version
         id: version
-        uses: hononeko/actions/version@5532ca1e4b7254aed1f85fe64b6230941d6eed21 # v1.4.2
+        uses: hononeko/actions/version@e1fdec215f80fc9a1574c61b15303f6789d09b7c # v1.4.7
         with:
           tag-prefix: v
 
@@ -52,7 +52,7 @@ jobs:
 
       - name: Release notes
         if: steps.version.outputs.version-type != 'none'
-        uses: hononeko/actions/release-notes@5532ca1e4b7254aed1f85fe64b6230941d6eed21 # v1.4.2
+        uses: hononeko/actions/release-notes@e1fdec215f80fc9a1574c61b15303f6789d09b7c # v1.4.7
         with:
           previous-tag: ${{ steps.version.outputs.previous-tag }}
           tag: ${{ steps.version.outputs.version-tag }}
