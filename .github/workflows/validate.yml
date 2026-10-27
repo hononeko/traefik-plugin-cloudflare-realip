@@ -17,34 +17,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version-file: "go.mod"
-          cache: false
+          persist-credentials: false
 
-      - name: Verify go.mod is tidy
-        run: go mod tidy -diff
+      - name: Lint workflows and actions
+        uses: hononeko/actions/lint-actions@v1
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+      - name: Lint Go
+        uses: hononeko/actions/lint-go@v1
+
+      - name: Run unit tests with coverage
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      # Overall coverage is reported; a pull request's changed lines must be 80% covered.
+      - name: Coverage
+        uses: hononeko/actions/coverage@v1
         with:
-          version: v2.15.0
-
-      - name: Run Unit Tests with Coverage
-        run: |
-          go test -v -race -coverprofile=coverage.out ./...
-          go tool cover -func=coverage.out
-
-      - name: Generate Job Summary
-        run: |
-          {
-            echo "### Unit Test Coverage"
-            echo '```text'
-            go tool cover -func=coverage.out
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          files: coverage.out
+          min-changed-coverage: "80"
 
   # Traefik interprets plugins with yaegi rather than compiling them, so the tests also run under the interpreter.
   # yaegi resolves imports through GOPATH, hence the GOPATH layout and GO111MODULE=off.
@@ -62,6 +52,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           path: go/src/github.com/${{ github.repository }}
 
       - name: Setup Go
@@ -88,6 +79,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Run end-to-end test
         env:
