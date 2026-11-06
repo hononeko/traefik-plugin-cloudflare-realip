@@ -6,7 +6,7 @@ on:
 env:
   # Keep in step with the yaegi version in Traefik's go.mod.
   # renovate: datasource=go depName=github.com/traefik/yaegi
-  YAEGI_VERSION: v0.16.1
+  YAEGI_VERSION: v0.16.2
 
 jobs:
   test:
