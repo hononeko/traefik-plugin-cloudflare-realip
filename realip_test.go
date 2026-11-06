@@ -18,9 +18,9 @@ type seen struct {
 func serve(t *testing.T, remoteAddr string, headers map[string]string) seen {
 	t.Helper()
 
-	var got seen
+	got := &seen{}
 	next := http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
-		got = seen{
+		*got = seen{
 			xff:            req.Header.Get(headerXForwardedFor),
 			xRealIP:        req.Header.Get(headerXRealIP),
 			cfConnectingIP: req.Header.Get(headerCFConnectingIP),
@@ -45,7 +45,7 @@ func serve(t *testing.T, remoteAddr string, headers map[string]string) seen {
 	if !got.called {
 		t.Fatal("next handler was not called")
 	}
-	return got
+	return *got
 }
 
 func TestServeHTTP(t *testing.T) {
